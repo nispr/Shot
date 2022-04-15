@@ -13,10 +13,9 @@ object model {
 object Config {
   val defaultTolerance: Double         = 0.0
   val shotConfiguration: String        = "shotDependencies"
-  val androidDependencyMode: FilePath  = "androidTestImplementation"
   val androidDependencyGroup: String   = "com.karumi"
   val androidDependencyName: String    = "shot-android"
-  val androidDependencyVersion: String = "5.13.0"
+  val androidDependencyVersion: String = "5.14-SNAPSHOT"
   val androidDependency: FilePath =
     s"$androidDependencyGroup:$androidDependencyName:$androidDependencyVersion"
 

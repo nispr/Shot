@@ -1,5 +1,6 @@
 package com.karumi.shot
 
+import com.android.build.api.dsl.{TestBuildType, TestExtension, TestProductFlavor}
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.{AppExtension, LibraryExtension}
 import com.android.builder.model.{BuildType, ProductFlavor}
@@ -63,6 +64,8 @@ class ShotPlugin extends Plugin[Project] {
       addTasksToAppModule(project)
     } else if (isAnAndroidLibrary(project)) {
       addTasksToLibraryModule(project)
+    } else if (isAnAndroidTestModule(project)) {
+      addTasksToTestModule(project)
     }
   }
 
@@ -88,22 +91,38 @@ class ShotPlugin extends Plugin[Project] {
     }
   }
 
+  private def addTasksToTestModule(project: Project) = {
+    val testExtension =
+      getAndroidTestExtension(project)
+    val baseTask =
+      project.getTasks
+        .register(Config.defaultTaskName, classOf[ExecuteScreenshotTestsForEveryFlavor])
+
+    testExtension.getBuildTypes.all { buildType: TestBuildType =>
+      val appTestId = testExtension.getDefaultConfig.getTestApplicationId
+      checkIfApplicationIdIsConfigured(project, appTestId)
+      val flavorName = None
+      val orchestrated = isOrchestratorConnected(project)
+      addTasksFor(project, flavorName, buildType.asInstanceOf[BuildType], appTestId, orchestrated, baseTask)
+    }
+  }
+
   private def addTaskToVariant(
       project: Project,
       baseTask: TaskProvider[ExecuteScreenshotTestsForEveryFlavor],
       variant: BaseVariant
   ) = {
     val flavor = variant.getMergedFlavor
-    checkIfApplicationIdIsConfigured(project, flavor)
-    val completeAppId = composeCompleteAppId(project, variant)
-    val appTestId     = Option(flavor.getTestApplicationId).getOrElse(completeAppId)
-    val flavorName    = if (variant.getFlavorName.nonEmpty) Some(variant.getFlavorName) else None
-    val orchestrated  = isOrchestratorConnected(project)
+    checkIfApplicationIdIsConfigured(project, flavor.getTestApplicationId)
+    val completeAppId = composeCompleteAppId(project, flavor)
+    val appTestId = Option(flavor.getTestApplicationId).getOrElse(completeAppId)
+    val flavorName = if (variant.getFlavorName.nonEmpty) Some(variant.getFlavorName) else None
+    val orchestrated = isOrchestratorConnected(project)
 
     addTasksFor(project, flavorName, variant.getBuildType, appTestId, orchestrated, baseTask)
   }
 
-  private def composeCompleteAppId(project: Project, variant: BaseVariant): String = {
+  private def composeCompleteAppId(project: Project, variant: ProductFlavor): String = {
     val appId =
       try {
         variant.getApplicationId
@@ -123,8 +142,8 @@ class ShotPlugin extends Plugin[Project] {
     appId + ".test"
   }
 
-  private def checkIfApplicationIdIsConfigured(project: Project, flavor: ProductFlavor) =
-    if (isAnAndroidLibrary(project) && flavor.getTestApplicationId == null) {
+  private def checkIfApplicationIdIsConfigured(project: Project, testApplicationId: String) =
+    if ((isAnAndroidLibrary(project) || isAnAndroidTestModule(project)) && testApplicationId == null) {
       throw ShotException(
         "Your Android library needs to be configured using an testApplicationId in your build.gradle defaultConfig block."
       )
@@ -237,10 +256,18 @@ class ShotPlugin extends Plugin[Project] {
       dependencies.add(dependencyToAdd)
     })
     configs
-      .named(Config.androidDependencyMode)
+      .named(getAndroidDependencyMode(project))
       .configure { config =>
         config.extendsFrom(shotConfig)
       }
+  }
+
+  private def getAndroidDependencyMode(project: Project) = {
+    if (isAnAndroidTestModule(project)) {
+      "implementation"
+    } else {
+      "androidTestImplementation"
+    }
   }
 
   private def runInstrumentation(project: Project, extension: ShotExtension): Boolean = {
@@ -273,6 +300,14 @@ class ShotPlugin extends Plugin[Project] {
       case _: Throwable => false
     }
 
+  private def isAnAndroidTestModule(project: Project): Boolean =
+    try {
+      getAndroidTestExtension(project)
+      true
+    } catch {
+      case _: Throwable => false
+    }
+
   private def getAndroidLibraryExtension(project: Project) = {
     project.getExtensions
       .getByType[LibraryExtension](classOf[LibraryExtension])
@@ -282,12 +317,18 @@ class ShotPlugin extends Plugin[Project] {
     project.getExtensions.getByType[AppExtension](classOf[AppExtension])
   }
 
+  private def getAndroidTestExtension(project: Project) = {
+    project.getExtensions.getByType[TestExtension](classOf[TestExtension])
+  }
+
   private def isOrchestratorConnected(project: Project) = {
     val orchestrator = "ANDROIDX_TEST_ORCHESTRATOR"
     if (isAnAndroidProject(project)) {
       getAndroidAppExtension(project).getTestOptions.getExecution.equalsIgnoreCase(orchestrator)
     } else if (isAnAndroidLibrary(project)) {
       getAndroidLibraryExtension(project).getTestOptions.getExecution.equalsIgnoreCase(orchestrator)
+    } else if (isAnAndroidTestModule(project)) {
+      getAndroidTestExtension(project).getTestOptions.getExecution.equalsIgnoreCase(orchestrator)
     } else {
       false
     }

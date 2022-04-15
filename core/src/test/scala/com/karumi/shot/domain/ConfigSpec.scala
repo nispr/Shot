@@ -9,10 +9,6 @@ class ConfigSpec extends AnyFlatSpec with should.Matchers {
     Config.androidDependency shouldBe "com.karumi:shot-android:5.13.0"
   }
 
-  it should "add the dependency using the androidTestImplementation mode" in {
-    Config.androidDependencyMode shouldBe "androidTestImplementation"
-  }
-
   it should "have instrumentation test task with flavor" in {
     Config.defaultInstrumentationTestTask(
       Some("green"),

@@ -1,0 +1,68 @@
+apply plugin: "com.android.test"
+apply plugin: "kotlin-android"
+apply plugin: "shot"
+
+android {
+    targetProjectPath ':app'
+
+    compileSdkVersion 28
+    defaultConfig {
+        testApplicationId "com.karumi.test"
+        minSdkVersion 21
+        targetSdkVersion 28
+        testInstrumentationRunner "com.karumi.shot.ShotTestRunner"
+        vectorDrawables.useSupportLibrary = true
+    }
+
+    packagingOptions {
+        exclude "META-INF/*"
+    }
+
+    testOptions {
+        if (System.getenv("orchestrated") == "true") {
+            execution "ANDROIDX_TEST_ORCHESTRATOR"
+        }
+    }
+}
+
+configurations {
+    ktlint
+}
+
+dependencies {
+    ktlint "com.github.shyiko:ktlint:0.29.0"
+
+    implementation "junit:junit:4.12"
+    androidTestUtil "androidx.test:orchestrator:1.4.1"
+
+    // Required for activity resolution
+    implementation "com.github.salomonbrys.kodein:kodein:4.1.0"
+    implementation "com.github.salomonbrys.kodein:kodein-core:4.1.0"
+    implementation "com.github.salomonbrys.kodein:kodein-android:4.1.0"
+    implementation "com.github.salomonbrys.kodein:kodein-conf:4.1.0"
+
+    implementation "androidx.test.espresso:espresso-core:3.2.0"
+    implementation "androidx.test.espresso:espresso-intents:3.3.0"
+}
+
+shot {
+    showOnlyFailingTestsInReports = true
+}
+
+tasks.register("ktlint", JavaExec) {
+    main = "com.github.shyiko.ktlint.Main"
+    classpath = configurations.ktlint
+    args "src/**/*.kt"
+}
+
+tasks.named("check") { dependsOn "ktLint" }
+
+tasks.register("ktlintFormat", JavaExec) {
+    main = "com.github.shyiko.ktlint.Main"
+    classpath = configurations.ktlint
+    args "-F", "src/**/*.kt"
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.AbstractKotlinCompile).configureEach {
+    kotlinOptions.freeCompilerArgs += ["-Xuse-experimental=kotlinx.coroutines.ExperimentalCoroutinesApi"]
+}

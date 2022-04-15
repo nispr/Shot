@@ -9,7 +9,7 @@ buildscript {
   }
   dependencies {
     classpath "com.neenbedankt.gradle.plugins:android-apt:1.7"
-    classpath "com.karumi:shot:5.13.0"
+    classpath "com.karumi:shot:5.14-SNAPSHOT"
     classpath "com.trevjonez.composer:plugin:1.0.0-rc08"
   }
 }
@@ -61,7 +61,7 @@ configurations {
 dependencies {
     ktlint "com.github.shyiko:ktlint:0.29.0"
 
-    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'com.google.android.material:material:1.0.0'
 
     implementation "com.github.salomonbrys.kodein:kodein:4.1.0"
